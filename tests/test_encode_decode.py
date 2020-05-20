@@ -96,9 +96,9 @@ class TestBase64(unittest.TestCase):
 
 
 class TestBinASCII(unittest.TestCase):
-    @given(payload=st.binary(), backtick = st.booleans())
+    @given(payload=st.binary(), backtick=st.booleans())
     def test_b2a_uu_a2b_uu_round_trip(self, payload, backtick):
-        x = binascii.b2a_uu(payload, backtick = backtick)
+        x = binascii.b2a_uu(payload, backtick=backtick)
         self.assertEqual(payload, binascii.a2b_uu(x))
 
     @given(payload=st.binary(), newline=st.booleans())
