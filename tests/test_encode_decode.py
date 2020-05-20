@@ -3,6 +3,7 @@ import binascii
 import colorsys
 import quopri
 import string
+import sys
 import unittest
 
 from hypothesis import assume, example, given, strategies as st, target
@@ -96,8 +97,16 @@ class TestBase64(unittest.TestCase):
 
 
 class TestBinASCII(unittest.TestCase):
+    @given(payload=st.binary())
+    def test_b2a_uu_a2b_uu_round_trip(self, payload):
+        x = binascii.b2a_uu(payload)
+        self.assertEqual(payload, binascii.a2b_uu(x))
+
+    @unittest.skipIf(
+        sys.version_info[:2] < (3, 7), "backtick not supported in this library version"
+    )
     @given(payload=st.binary(), backtick=st.booleans())
-    def test_b2a_uu_a2b_uu_round_trip(self, payload, backtick):
+    def test_b2a_uu_a2b_uu_round_trip_with_backtick(self, payload, backtick):
         x = binascii.b2a_uu(payload, backtick=backtick)
         self.assertEqual(payload, binascii.a2b_uu(x))
 
@@ -124,7 +133,11 @@ class TestBinASCII(unittest.TestCase):
     @given(payload=st.binary())
     def test_b2a_hqx_a2b_hqx_round_trip(self, payload):
         # assuming len(payload) as 3, since it throws exception: binascii.Incomplete, when length is not a multiple of 3
-        assume(len(payload) % 3 == 0)
+        if len(payload) % 3:
+            with self.assertRaises(binascii.Incomplete):
+                x = binascii.b2a_hqx(payload)
+                binascii.a2b_hqx(x)
+            payload += b"\x00" * (-len(payload) % 3)
         x = binascii.b2a_hqx(payload)
         res, _ = binascii.a2b_hqx(x)
         self.assertEqual(payload, res)
@@ -141,8 +154,8 @@ class TestBinASCII(unittest.TestCase):
     )
     def test_crc_hqx_two_pieces(self, payload_piece_1, payload_piece_2, value):
         combined_crc = binascii.crc_hqx(payload_piece_1 + payload_piece_2, value)
-        crc = binascii.crc_hqx(payload_piece_1, value)
-        crc = binascii.crc_hqx(payload_piece_2, crc)
+        crc_part1 = binascii.crc_hqx(payload_piece_1, value)
+        crc = binascii.crc_hqx(payload_piece_2, crc_part1)
         self.assertEqual(combined_crc, crc)
 
     @given(payload=st.binary(), value=st.just(0) | st.integers())
@@ -157,8 +170,8 @@ class TestBinASCII(unittest.TestCase):
     )
     def test_crc32_two_part(self, payload_piece_1, payload_piece_2, value):
         combined_crc = binascii.crc32(payload_piece_1 + payload_piece_2, value)
-        crc = binascii.crc32(payload_piece_1, value)
-        crc = binascii.crc32(payload_piece_2, crc)
+        crc_part1 = binascii.crc32(payload_piece_1, value)
+        crc = binascii.crc32(payload_piece_2, crc_part1)
         self.assertEqual(combined_crc, crc)
 
     @given(payload=st.binary())
